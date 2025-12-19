@@ -19,68 +19,62 @@ struct MailActionBar: View {
 
     var body: some View {
         if let email {
-            HStack {
-                Spacer(minLength: 0)
-                HStack(spacing: 14) {
-                    MailActionButton(systemImage: "arrowshape.turn.up.left", help: "Reply") {
-                        onReply(email)
-                    }
-                    MailActionButton(systemImage: "arrowshape.turn.up.left.2", help: "Reply All") {
-                        onReplyAll(email)
-                    }
-                    MailActionButton(systemImage: "arrowshape.turn.up.right", help: "Forward") {
-                        onForward(email)
-                    }
+            HStack(spacing: 14) {
+                MailActionButton(systemImage: "arrowshape.turn.up.left", help: "Reply") {
+                    onReply(email)
+                }
+                MailActionButton(systemImage: "arrowshape.turn.up.left.2", help: "Reply All") {
+                    onReplyAll(email)
+                }
+                MailActionButton(systemImage: "arrowshape.turn.up.right", help: "Forward") {
+                    onForward(email)
+                }
 
-                    Divider()
-                        .frame(height: 18)
+                Divider()
+                    .frame(height: 18)
 
-                    MailActionButton(
-                        systemImage: email.isRead ? "envelope.badge" : "envelope.open",
-                        help: email.isRead ? "Mark as Unread" : "Mark as Read"
-                    ) {
-                        Task {
-                            if email.isRead {
-                                await onMarkUnread(email)
-                            } else {
-                                await onMarkRead(email)
-                            }
+                MailActionButton(
+                    systemImage: email.isRead ? "envelope.badge" : "envelope.open",
+                    help: email.isRead ? "Mark as Unread" : "Mark as Read"
+                ) {
+                    Task {
+                        if email.isRead {
+                            await onMarkUnread(email)
+                        } else {
+                            await onMarkRead(email)
                         }
-                    }
-
-                    MailActionButton(
-                        systemImage: email.isStarred ? "star.fill" : "star",
-                        help: email.isStarred ? "Unstar" : "Star",
-                        tint: email.isStarred ? .yellow : .primary
-                    ) {
-                        Task {
-                            if email.isStarred {
-                                await onUnstar(email)
-                            } else {
-                                await onStar(email)
-                            }
-                        }
-                    }
-
-                    MailActionButton(systemImage: "folder", help: "Move to Folder") {
-                        onMove(email)
-                    }
-
-                    MailActionButton(systemImage: "trash", help: "Delete") {
-                        Task { await onDelete(email) }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(.white.opacity(0.08), lineWidth: 1)
-                )
-                Spacer(minLength: 0)
+
+                MailActionButton(
+                    systemImage: email.isStarred ? "star.fill" : "star",
+                    help: email.isStarred ? "Unstar" : "Star",
+                    tint: email.isStarred ? .yellow : .primary
+                ) {
+                    Task {
+                        if email.isStarred {
+                            await onUnstar(email)
+                        } else {
+                            await onStar(email)
+                        }
+                    }
+                }
+
+                MailActionButton(systemImage: "folder", help: "Move to Folder") {
+                    onMove(email)
+                }
+
+                MailActionButton(systemImage: "trash", help: "Delete") {
+                    Task { await onDelete(email) }
+                }
             }
-            .padding(.top, 6)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(.white.opacity(0.08), lineWidth: 1)
+            )
         }
     }
 }

@@ -18,6 +18,8 @@ struct ChronicleEmailListView: View {
     @Binding var selectedEmail: Email?
     let isBackgroundSyncing: Bool
     let onRefresh: () async -> Void
+    let onCompose: () -> Void
+    let onToggleAI: () -> Void
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.syncService) private var syncService
@@ -159,12 +161,36 @@ struct ChronicleEmailListView: View {
         }
 
         ToolbarItem(placement: .primaryAction) {
-            Button(action: { Task { await onRefresh() } }) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 13, weight: .medium))
+            GlassEffectContainer(spacing: 4.0) {
+                HStack(spacing: 4.0) {
+                    Button(action: { Task { await onRefresh() } }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect()
+                    .help("Refresh")
+
+                    Button(action: onCompose) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect()
+                    .help("New Message")
+
+                    Button(action: onToggleAI) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect()
+                    .help("AI Assistant")
+                }
             }
-            .buttonStyle(.glass)
-            .help("Refresh")
         }
     }
 
@@ -455,17 +481,16 @@ struct ChronicleEmailRow: View {
                         }
                     }
 
-                    // Subject line with action buttons
-                    HStack(spacing: 8) {
+                    // Subject line
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(email.subject)
                             .font(email.isRead ? .caption : .subheadline)
                             .fontWeight(email.isRead ? .regular : .medium)
                             .foregroundStyle(isSelected ? .white.opacity(0.9) : (email.isRead ? .secondary : .primary))
                             .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Spacer(minLength: 4)
-
-                        // Action buttons
+                        // Action buttons - always right-aligned
                         HStack(spacing: 6) {
                             Button(action: onReply) {
                                 Image(systemName: "arrowshape.turn.up.left")
@@ -682,7 +707,9 @@ struct ChronicleEmailRow: View {
         folder: nil,
         selectedEmail: .constant(nil),
         isBackgroundSyncing: false,
-        onRefresh: {}
+        onRefresh: {},
+        onCompose: {},
+        onToggleAI: {}
     )
     .frame(width: 400, height: 600)
 }

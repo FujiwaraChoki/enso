@@ -142,57 +142,30 @@ struct AISidebarView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(
-            .regularMaterial,
-            in: UnevenRoundedRectangle(
-                cornerRadii: .init(topLeading: 0, bottomLeading: 12, bottomTrailing: 12, topTrailing: 0),
-                style: .continuous
-            )
-        )
     }
 
     // MARK: - Email Context Card
 
     private func emailContextCard(_ email: Email) -> some View {
         HStack(spacing: 12) {
-            // Email icon
-            ZStack {
-                Circle()
-                    .fill(.blue.gradient.opacity(0.15))
-                    .frame(width: 32, height: 32)
+            Image(systemName: "envelope.fill")
+                .foregroundStyle(Color.blue)
+                .font(.system(size: 13))
 
-                Image(systemName: "envelope.fill")
-                    .foregroundStyle(Color.blue)
-                    .font(.system(size: 13))
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Email Context")
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-
-                Text(email.subject)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-            }
+            Text(email.subject)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .lineLimit(1)
 
             Spacer()
 
-            // Context indicator
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
                 .font(.caption)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
+        .padding(.vertical, 10)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
@@ -200,46 +173,23 @@ struct AISidebarView: View {
     // MARK: - Empty State View
 
     private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            // Icon with animated gradient
-            ZStack {
-                Circle()
-                    .fill(
-                        email == nil
-                            ? AnyShapeStyle(.secondary.opacity(0.1))
-                            : AnyShapeStyle(.blue.gradient.opacity(0.15))
-                    )
-                    .frame(width: 72, height: 72)
+        VStack(spacing: 20) {
+            Image(systemName: email == nil ? "envelope.open" : "sparkles")
+                .font(.system(size: 32, weight: .medium))
+                .foregroundStyle(email == nil ? Color.secondary : Color.blue)
 
-                Image(systemName: email == nil ? "envelope.open" : "sparkles")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(email == nil ? Color.secondary : Color.blue)
-            }
-            .background(.regularMaterial, in: Circle())
-
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 Text(email == nil ? "Select an Email" : "Ask Me Anything")
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.headline)
 
                 Text(email == nil
                      ? "Choose an email to get AI assistance"
                      : "I can summarize, draft replies, extract info, or answer questions about this email.")
-                    .font(.callout)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(2)
             }
             .padding(.horizontal, 24)
-
-            // Quick action hints when email is selected
-            if email != nil {
-                HStack(spacing: 8) {
-                    QuickHintPill(icon: "doc.text", text: "Summarize")
-                    QuickHintPill(icon: "arrowshape.turn.up.left", text: "Reply")
-                    QuickHintPill(icon: "checklist", text: "Tasks")
-                }
-            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)
@@ -249,15 +199,9 @@ struct AISidebarView: View {
 
     private func errorView(_ error: String) -> some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(.orange.opacity(0.15))
-                    .frame(width: 28, height: 28)
-
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .font(.system(size: 12))
-            }
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.system(size: 12))
 
             Text(error)
                 .font(.callout)
@@ -276,10 +220,7 @@ struct AISidebarView: View {
             .buttonStyle(.glass)
         }
         .padding(14)
-        .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     // MARK: - Input View
@@ -292,10 +233,7 @@ struct AISidebarView: View {
                 .lineLimit(1...4)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(
-                    .regularMaterial,
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .focused($isInputFocused)
                 .onSubmit {
                     Task {
@@ -314,31 +252,19 @@ struct AISidebarView: View {
                     }
                 }
             }) {
-                ZStack {
-                    Circle()
-                        .fill(sendButtonColor.gradient)
-                        .frame(width: 36, height: 36)
-
-                    Image(systemName: aiService.isGenerating ? "stop.fill" : "arrow.up")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
+                Image(systemName: aiService.isGenerating ? "stop.fill" : "arrow.up")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(sendButtonColor)
+                    .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
-            .background(.regularMaterial, in: Circle())
+            .glassEffect(.regular.interactive(), in: Circle())
             .disabled(inputText.isEmpty && !aiService.isGenerating)
             .opacity(inputText.isEmpty && !aiService.isGenerating ? 0.5 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: inputText.isEmpty)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(
-            .regularMaterial,
-            in: UnevenRoundedRectangle(
-                cornerRadii: .init(topLeading: 16, bottomLeading: 0, bottomTrailing: 0, topTrailing: 16),
-                style: .continuous
-            )
-        )
     }
 
     private var sendButtonColor: Color {
@@ -347,7 +273,7 @@ struct AISidebarView: View {
         } else if inputText.isEmpty {
             return .secondary
         } else {
-            return .blue
+            return .primary
         }
     }
 

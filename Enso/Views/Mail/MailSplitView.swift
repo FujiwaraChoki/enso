@@ -32,7 +32,9 @@ struct MailSplitView: View {
                 folder: selectedFolder,
                 selectedEmail: $selectedEmail,
                 isBackgroundSyncing: syncService.isBackgroundSyncing,
-                onRefresh: { await refreshCurrentFolder() }
+                onRefresh: { await refreshCurrentFolder() },
+                onCompose: onCompose,
+                onToggleAI: onToggleAI
             )
             .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 550)
         } detail: {
@@ -60,32 +62,6 @@ struct MailSplitView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .searchableEmails(folder: selectedFolder, selectedEmail: $selectedEmail)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 10) {
-                    Button(action: { Task { await refreshCurrentFolder() } }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .buttonStyle(.glass)
-                    .help("Refresh")
-
-                    Button(action: onCompose) {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .buttonStyle(.glass)
-                    .help("New Message")
-
-                    Button(action: onToggleAI) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .buttonStyle(.glass)
-                    .help("AI Assistant")
-                }
-            }
-        }
         .onChange(of: selectedFolder) { _, newFolder in
             // Clear selection when folder changes
             selectedEmail = nil
@@ -640,27 +616,30 @@ struct EmailDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Action Bar
-            MailActionBar(
-                email: email,
-                onReply: { _ in onReply() },
-                onReplyAll: { _ in onReplyAll() },
-                onForward: { _ in onForward() },
-                onMarkRead: { _ in await onMarkRead() },
-                onMarkUnread: { _ in await onMarkUnread() },
-                onStar: { _ in await onStar() },
-                onUnstar: { _ in await onUnstar() },
-                onMove: { _ in showMoveSheet = true },
-                onDelete: { _ in await onDelete() }
-            )
-
-            Divider()
-
             // Fixed Header
             VStack(alignment: .leading, spacing: 8) {
-                Text(email.subject)
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                HStack(alignment: .center, spacing: 12) {
+                    Text(email.subject)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .lineLimit(2)
+                        .layoutPriority(1)
+
+                    Spacer(minLength: 12)
+
+                    MailActionBar(
+                        email: email,
+                        onReply: { _ in onReply() },
+                        onReplyAll: { _ in onReplyAll() },
+                        onForward: { _ in onForward() },
+                        onMarkRead: { _ in await onMarkRead() },
+                        onMarkUnread: { _ in await onMarkUnread() },
+                        onStar: { _ in await onStar() },
+                        onUnstar: { _ in await onUnstar() },
+                        onMove: { _ in showMoveSheet = true },
+                        onDelete: { _ in await onDelete() }
+                    )
+                }
 
                 HStack {
                     // Avatar placeholder
