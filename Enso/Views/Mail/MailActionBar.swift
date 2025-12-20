@@ -68,13 +68,7 @@ struct MailActionBar: View {
                     Task { await onDelete(email) }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(.white.opacity(0.08), lineWidth: 1)
-            )
+            .glassCapsule(padding: EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16), cornerRadius: 30)
         }
     }
 }

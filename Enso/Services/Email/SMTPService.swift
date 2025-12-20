@@ -35,11 +35,68 @@ actor SMTPService {
         }
     }
 
+    /// Sendable data extracted from an Email for reply operations
+    struct ReplyEmailData: Sendable {
+        let fromAddress: String
+        let toAddresses: [String]
+        let ccAddresses: [String]
+        let subject: String
+        let messageId: String?
+        let references: [String]
+
+        @MainActor
+        init(from email: Email) {
+            self.fromAddress = email.fromAddress
+            self.toAddresses = email.toAddresses
+            self.ccAddresses = email.ccAddresses
+            self.subject = email.subject
+            self.messageId = email.messageId
+            self.references = email.references
+        }
+    }
+
+    /// Sendable data extracted from an Email for forward operations
+    struct ForwardEmailData: Sendable {
+        let fromAddress: String
+        let toAddresses: [String]
+        let subject: String
+        let date: Date
+        let textBody: String?
+
+        @MainActor
+        init(from email: Email) {
+            self.fromAddress = email.fromAddress
+            self.toAddresses = email.toAddresses
+            self.subject = email.subject
+            self.date = email.date
+            self.textBody = email.textBody
+        }
+    }
+
+    /// Sendable data extracted from an Account
+    struct AccountData: Sendable {
+        let emailAddress: String
+        let displayName: String?
+        let name: String
+        let smtpHost: String
+        let smtpPort: Int
+
+        @MainActor
+        init(from account: Account) {
+            self.emailAddress = account.emailAddress
+            self.displayName = account.displayName
+            self.name = account.name
+            self.smtpHost = account.smtpHost
+            self.smtpPort = account.smtpPort
+        }
+    }
+
     // MARK: - Properties
 
     private var server: SwiftMail.SMTPServer?
-    private let account: Account
+    private let accountData: AccountData
     private let keychainService: KeychainService
+    private let keychainIdentifier: String
 
     private var isConnected: Bool {
         server != nil
@@ -47,8 +104,17 @@ actor SMTPService {
 
     // MARK: - Initialization
 
+    init(accountData: AccountData, keychainIdentifier: String, keychainService: KeychainService = .shared) {
+        self.accountData = accountData
+        self.keychainIdentifier = keychainIdentifier
+        self.keychainService = keychainService
+    }
+
+    /// Convenience initializer that extracts data from Account on MainActor
+    @MainActor
     init(account: Account, keychainService: KeychainService = .shared) {
-        self.account = account
+        self.accountData = AccountData(from: account)
+        self.keychainIdentifier = account.keychainIdentifier
         self.keychainService = keychainService
     }
 
@@ -57,12 +123,12 @@ actor SMTPService {
     /// Connect and authenticate with the SMTP server
     func connect() async throws {
         do {
-            let server = SwiftMail.SMTPServer(host: account.smtpHost, port: account.smtpPort)
+            let server = SwiftMail.SMTPServer(host: accountData.smtpHost, port: accountData.smtpPort)
             try await server.connect()
 
             // Get password from keychain
-            let password = try await keychainService.getCredentials(for: account)
-            try await server.login(username: account.emailAddress, password: password)
+            let password = try await keychainService.getPassword(for: keychainIdentifier, account: accountData.emailAddress)
+            try await server.login(username: accountData.emailAddress, password: password)
 
             self.server = server
         } catch is KeychainService.KeychainError {
@@ -109,24 +175,25 @@ actor SMTPService {
     }
 
     /// Send a reply to an existing email
-    func sendReply(to originalEmail: Email, body: String, htmlBody: String? = nil, replyAll: Bool = false) async throws {
+    /// - Parameters:
+    ///   - emailData: Sendable data extracted from the original email (use `ReplyEmailData(from:)` on MainActor)
+    ///   - body: The reply body text
+    ///   - htmlBody: Optional HTML body
+    ///   - replyAll: Whether to reply to all recipients
+    func sendReply(to emailData: ReplyEmailData, body: String, htmlBody: String? = nil, replyAll: Bool = false) async throws {
         let server = try await ensureConnected()
 
-        let (toAddresses, ccAddresses, subject, inReplyTo, references) = await MainActor.run {
-            let toAddresses = [originalEmail.fromAddress]
-            var ccAddresses: [String] = []
+        let toAddresses = [emailData.fromAddress]
+        var ccAddresses: [String] = []
 
-            if replyAll {
-                // Add original To recipients (except ourselves)
-                ccAddresses = originalEmail.toAddresses.filter { $0 != account.emailAddress }
-                // Add original CC recipients (except ourselves)
-                ccAddresses += originalEmail.ccAddresses.filter { $0 != account.emailAddress }
-            }
-
-            let subject = originalEmail.subject.hasPrefix("Re:") ? originalEmail.subject : "Re: \(originalEmail.subject)"
-
-            return (toAddresses, ccAddresses, subject, originalEmail.messageId, originalEmail.references)
+        if replyAll {
+            // Add original To recipients (except ourselves)
+            ccAddresses = emailData.toAddresses.filter { $0 != accountData.emailAddress }
+            // Add original CC recipients (except ourselves)
+            ccAddresses += emailData.ccAddresses.filter { $0 != accountData.emailAddress }
         }
+
+        let subject = emailData.subject.hasPrefix("Re:") ? emailData.subject : "Re: \(emailData.subject)"
 
         let outgoingEmail = OutgoingEmail(
             toAddresses: toAddresses,
@@ -135,8 +202,8 @@ actor SMTPService {
             subject: subject,
             textBody: body,
             htmlBody: htmlBody,
-            inReplyTo: inReplyTo,
-            references: references
+            inReplyTo: emailData.messageId,
+            references: emailData.references
         )
 
         do {
@@ -148,26 +215,26 @@ actor SMTPService {
     }
 
     /// Forward an existing email
-    func forwardEmail(_ originalEmail: Email, to recipients: [String], body: String? = nil) async throws {
+    /// - Parameters:
+    ///   - emailData: Sendable data extracted from the original email (use `ForwardEmailData(from:)` on MainActor)
+    ///   - recipients: The recipients to forward the email to
+    ///   - body: Optional body text to prepend to the forwarded message
+    func forwardEmail(_ emailData: ForwardEmailData, to recipients: [String], body: String? = nil) async throws {
         let server = try await ensureConnected()
 
         guard !recipients.isEmpty else {
             throw SMTPError.invalidRecipients
         }
 
-        let (subject, forwardedBody) = await MainActor.run {
-            let subject = originalEmail.subject.hasPrefix("Fwd:") ? originalEmail.subject : "Fwd: \(originalEmail.subject)"
+        let subject = emailData.subject.hasPrefix("Fwd:") ? emailData.subject : "Fwd: \(emailData.subject)"
 
-            var forwardedBody = body ?? ""
-            forwardedBody += "\n\n---------- Forwarded message ----------\n"
-            forwardedBody += "From: \(originalEmail.fromAddress)\n"
-            forwardedBody += "Date: \(originalEmail.date.formatted())\n"
-            forwardedBody += "Subject: \(originalEmail.subject)\n"
-            forwardedBody += "To: \(originalEmail.toAddresses.joined(separator: ", "))\n\n"
-            forwardedBody += originalEmail.textBody ?? ""
-
-            return (subject, forwardedBody)
-        }
+        var forwardedBody = body ?? ""
+        forwardedBody += "\n\n---------- Forwarded message ----------\n"
+        forwardedBody += "From: \(emailData.fromAddress)\n"
+        forwardedBody += "Date: \(emailData.date.formatted())\n"
+        forwardedBody += "Subject: \(emailData.subject)\n"
+        forwardedBody += "To: \(emailData.toAddresses.joined(separator: ", "))\n\n"
+        forwardedBody += emailData.textBody ?? ""
 
         let outgoingEmail = OutgoingEmail(
             toAddresses: recipients,
@@ -191,8 +258,8 @@ actor SMTPService {
     /// Convert OutgoingEmail to SwiftMail Email format
     private func createSMTPEmail(from outgoing: OutgoingEmail) throws -> SwiftMail.Email {
         // Create sender address
-        let senderName = account.displayName ?? account.name
-        let sender = SwiftMail.EmailAddress(name: senderName, address: account.emailAddress)
+        let senderName = accountData.displayName ?? accountData.name
+        let sender = SwiftMail.EmailAddress(name: senderName, address: accountData.emailAddress)
 
         // Create recipients
         let toRecipients = outgoing.toAddresses.map { SwiftMail.EmailAddress(address: $0) }
@@ -240,7 +307,7 @@ struct OutgoingEmail: Sendable {
     let inReplyTo: String?
     let references: [String]?
 
-    init(
+    nonisolated init(
         toAddresses: [String],
         ccAddresses: [String] = [],
         bccAddresses: [String] = [],

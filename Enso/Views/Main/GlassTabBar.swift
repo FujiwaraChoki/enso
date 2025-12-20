@@ -2,6 +2,7 @@
 //  GlassTabBar.swift
 //  Enso
 //
+//
 
 import SwiftUI
 
@@ -14,50 +15,53 @@ struct GlassTabBar: View {
     @Namespace private var tabNamespace
 
     var body: some View {
-        GlassEffectContainer(spacing: 8) {
-            HStack(spacing: 0) {
-                // Tab items
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(tabs) { tab in
-                            TabItemView(
-                                tab: tab,
-                                isSelected: tab.id == selectedTabId,
-                                namespace: tabNamespace,
-                                onSelect: { selectedTabId = tab.id },
-                                onClose: { onCloseTab(tab.id) }
-                            )
-                            .glassEffectID(tab.id.uuidString, in: tabNamespace)
-                        }
+        HStack(spacing: 0) {
+            // Tab items
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(tabs) { tab in
+                        TabItemView(
+                            tab: tab,
+                            isSelected: tab.id == selectedTabId,
+                            onSelect: { selectedTabId = tab.id },
+                            onClose: { onCloseTab(tab.id) }
+                        )
                     }
-                    .padding(.horizontal, 8)
                 }
-
-                Divider()
-                    .frame(height: 20)
-                    .padding(.horizontal, 8)
-
-                // New Tab Button
-                Button(action: onNewTab) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.clear, in: Circle())
-                .padding(.trailing, 8)
+                .padding(.horizontal, 4)
             }
+            // Limit the scroll view width so it doesn't push the button off if not needed,
+            // but allow it to expand.
+            // Actually, ScrollView takes available space.
+
+            // Divider
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 8)
+                .opacity(0.3)
+
+            // New Tab Button
+            Button(action: onNewTab) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 4)
         }
-        .frame(height: 44)
-        .background(.ultraThinMaterial)
+        .padding(5)
+        .glassEffect(.regular, in: Capsule())
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .frame(height: 50) // Fixed height for stability
     }
 }
 
 struct TabItemView: View {
     let tab: EnsoTab
     let isSelected: Bool
-    let namespace: Namespace.ID
     var onSelect: () -> Void
     var onClose: () -> Void
 
@@ -66,31 +70,37 @@ struct TabItemView: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: tab.icon)
-                .font(.system(size: 11))
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary.opacity(0.6))
 
             Text(tab.title)
-                .font(.system(size: 12))
+                .font(.system(size: 13, weight: isSelected ? .medium : .regular))
                 .lineLimit(1)
-                .foregroundStyle(isSelected ? .primary : .secondary)
+                .foregroundStyle(isSelected ? Color.primary : Color.primary.opacity(0.6))
 
             if tab.isClosable && (isHovering || isSelected) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.primary.opacity(0.5))
+                        .padding(4)
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .background(
+                    Circle()
+                        .fill(Color.primary.opacity(isHovering ? 0.1 : 0.0))
+                )
                 .transition(.opacity.combined(with: .scale))
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .frame(minWidth: 100, maxWidth: 180)
-        .contentShape(Rectangle())
-        .glassEffect(
-            isSelected ? .regular : .clear,
-            in: RoundedRectangle(cornerRadius: 8)
+        .contentShape(Capsule())
+        .background(
+            Capsule()
+                .fill(isSelected ? Color.accentColor.opacity(0.15) : (isHovering ? Color.primary.opacity(0.08) : Color.clear))
         )
         .onTapGesture(perform: onSelect)
         .onHover { hovering in
@@ -103,20 +113,23 @@ struct TabItemView: View {
 }
 
 #Preview {
-    VStack {
-        GlassTabBar(
-            tabs: .constant([
-                EnsoTab(type: .mail(folderId: nil), title: "Inbox", isClosable: false),
-                EnsoTab(type: .compose(draftId: nil), title: "New Message"),
-                EnsoTab(type: .aiConversation(conversationId: nil), title: "AI Assistant")
-            ]),
-            selectedTabId: .constant(nil),
-            onNewTab: {},
-            onCloseTab: { _ in }
-        )
+    ZStack {
+        Color.gray.opacity(0.2).ignoresSafeArea()
 
-        Spacer()
+        VStack {
+            GlassTabBar(
+                tabs: .constant([
+                    EnsoTab(type: .mail(folderId: nil), title: "Inbox", isClosable: false),
+                    EnsoTab(type: .compose(draftId: nil), title: "New Message"),
+                    EnsoTab(type: .aiConversation(conversationId: nil), title: "AI Assistant")
+                ]),
+                selectedTabId: .constant(nil),
+                onNewTab: {},
+                onCloseTab: { _ in }
+            )
+
+            Spacer()
+        }
     }
     .frame(width: 600, height: 400)
-    .background(.background)
 }

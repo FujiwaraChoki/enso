@@ -50,15 +50,23 @@ struct ComposeView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Main compose area
-            VStack(spacing: 0) {
-                // Header fields
-                VStack(spacing: 0) {
-                    // From row
-                    if accounts.count > 0 {
-                        ComposeFieldRow(label: "From") {
-                            if accounts.count > 1 {
+        ZStack {
+            // Background
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    focusedField = nil
+                }
+
+            HStack(spacing: 0) {
+                // Main Content
+                VStack(spacing: 20) {
+                    // Header Section
+                    VStack(spacing: 12) {
+                        // From & Actions Row
+                        HStack {
+                            // From Picker
+                            if accounts.count > 0 {
                                 Menu {
                                     ForEach(accounts) { account in
                                         Button(account.emailAddress) {
@@ -67,113 +75,155 @@ struct ComposeView: View {
                                     }
                                 } label: {
                                     HStack(spacing: 6) {
-                                        Text(activeAccount?.emailAddress ?? "Select")
+                                        Text("From:")
+                                            .foregroundStyle(.secondary)
+                                        Text(activeAccount?.emailAddress ?? "Select Account")
                                             .foregroundStyle(.primary)
                                         Image(systemName: "chevron.down")
-                                            .font(.system(size: 10, weight: .medium))
+                                            .font(.system(size: 10, weight: .bold))
                                             .foregroundStyle(.tertiary)
                                     }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .glassEffect(.regular, in: Capsule())
                                 }
                                 .buttonStyle(.plain)
-                            } else {
-                                Text(activeAccount?.emailAddress ?? "")
-                                    .foregroundStyle(.secondary)
                             }
-                            Spacer()
-                        }
-                    }
 
-                    // To row
-                    ComposeFieldRow(label: "To") {
-                        TextField("Recipients", text: $to)
-                            .textFieldStyle(.plain)
+                            Spacer()
+
+                            // Cc/Bcc Toggle
+                            if !showCcBcc {
+                                Button {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        showCcBcc = true
+                                    }
+                                } label: {
+                                    Text("Cc/Bcc")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .glassEffect(.regular, in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
+
+                        // Input Fields
+                        VStack(spacing: 12) {
+                            GlassTextField(
+                                title: "To",
+                                placeholder: "Recipient",
+                                text: $to,
+                                icon: "person"
+                            )
                             .focused($focusedField, equals: .to)
 
-                        if !showCcBcc {
-                            Button {
-                                withAnimation(.easeOut(duration: 0.15)) {
-                                    showCcBcc = true
+                            if showCcBcc {
+                                HStack(spacing: 12) {
+                                    GlassTextField(
+                                        title: "Cc",
+                                        placeholder: "Copy",
+                                        text: $cc,
+                                        icon: "person.2"
+                                    )
+                                    .focused($focusedField, equals: .cc)
+
+                                    GlassTextField(
+                                        title: "Bcc",
+                                        placeholder: "Blind Copy",
+                                        text: $bcc,
+                                        icon: "eye.slash"
+                                    )
+                                    .focused($focusedField, equals: .bcc)
                                 }
-                            } label: {
-                                Text("Cc Bcc")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.tertiary)
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
-                            .buttonStyle(.plain)
-                        }
-                    }
 
-                    // Cc/Bcc rows
-                    if showCcBcc {
-                        ComposeFieldRow(label: "Cc") {
-                            TextField("", text: $cc)
-                                .textFieldStyle(.plain)
-                                .focused($focusedField, equals: .cc)
-                        }
-
-                        ComposeFieldRow(label: "Bcc") {
-                            TextField("", text: $bcc)
-                                .textFieldStyle(.plain)
-                                .focused($focusedField, equals: .bcc)
-                        }
-                    }
-
-                    // Subject row
-                    ComposeFieldRow(label: "Subject", showDivider: false) {
-                        TextField("", text: $subject)
-                            .textFieldStyle(.plain)
+                            GlassTextField(
+                                title: "Subject",
+                                placeholder: "What's this about?",
+                                text: $subject,
+                                icon: "text.alignleft"
+                            )
                             .focused($focusedField, equals: .subject)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
-                Divider()
-                    .padding(.horizontal, 20)
-
-                // Body
-                ZStack(alignment: .topLeading) {
-                    if emailBody.isEmpty {
-                        Text("Write your message...")
-                            .foregroundStyle(.quaternary)
-                            .padding(.top, 12)
-                            .padding(.leading, 4)
-                            .allowsHitTesting(false)
+                        }
+                        .padding(.horizontal, 24)
                     }
 
-                    TextEditor(text: $emailBody)
-                        .scrollContentBackground(.hidden)
-                        .focused($focusedField, equals: .body)
-                        .padding(.top, 4)
-                }
-                .font(.body)
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .frame(maxHeight: .infinity)
+                    // Body Section
+                    ZStack(alignment: .topLeading) {
+                        if emailBody.isEmpty {
+                            Text("Start writing your message...")
+                                .font(.body)
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 16)
+                                .padding(.leading, 16)
+                                .allowsHitTesting(false)
+                        }
 
-                // Bottom bar
-                HStack(spacing: 8) {
+                        TextEditor(text: $emailBody)
+                            .font(.body)
+                            .scrollContentBackground(.hidden)
+                            .focused($focusedField, equals: .body)
+                            .padding(12)
+                    }
+                    .frame(maxHeight: .infinity)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 80) // Space for floating bar
+                }
+
+                // AI Panel
+                if showAIAssistant {
+                    Divider()
+                        .ignoresSafeArea()
+
+                    ComposeAIPanel(
+                        emailBody: $emailBody,
+                        subject: subject,
+                        onDismiss: { showAIAssistant = false }
+                    )
+                    .frame(width: 320)
+                    .transition(.move(edge: .trailing))
+                }
+            }
+
+            // Floating Bottom Bar
+            VStack {
+                Spacer()
+                HStack(spacing: 16) {
                     // Attach
-                    ToolbarButton(icon: "paperclip", label: "Attach") {}
-
-                    // AI
-                    ToolbarButton(
-                        icon: "sparkles",
-                        label: "AI",
-                        isActive: showAIAssistant
-                    ) {
-                        showAIAssistant.toggle()
+                    Button {
+                        // Attachment logic
+                    } label: {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
                     }
+                    .buttonStyle(.plain)
+                    .help("Attach File")
+
+                    // AI Toggle
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            showAIAssistant.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 18))
+                            .foregroundStyle(showAIAssistant ? Color.accentColor : .secondary)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .help("AI Assistant")
 
                     Spacer()
-
-                    // Error
-                    if let error = sendError {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .lineLimit(1)
-                    }
 
                     // Discard
                     Button {
@@ -183,61 +233,59 @@ struct ComposeView: View {
                         }
                     } label: {
                         Image(systemName: "trash")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, height: 32)
+                            .font(.system(size: 16))
+                            .foregroundStyle(.red.opacity(0.8))
+                            .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
-                    .help("Discard")
+                    .help("Discard Draft")
 
-                    // Send
+                    // Send Button
                     Button {
                         Task { await sendEmail() }
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
                             if isSending {
                                 ProgressView()
                                     .scaleEffect(0.6)
-                                    .frame(width: 14, height: 14)
+                                    .frame(width: 16, height: 16)
+                                    .tint(.white)
                             } else {
                                 Image(systemName: "paperplane.fill")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 14))
                             }
-                            Text(isSending ? "Sending" : "Send")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                            Text(isSending ? "Sending..." : "Send")
+                                .font(.headline)
+                                .fontWeight(.semibold)
                         }
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
                         .background(
-                            canSend ? Color.accentColor : Color.secondary.opacity(0.5),
-                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            canSend ? Color.accentColor : Color.secondary.opacity(0.3),
+                            in: Capsule()
                         )
+                        .shadow(color: canSend ? Color.accentColor.opacity(0.3) : .clear, radius: 8, y: 4)
                     }
                     .buttonStyle(.plain)
                     .disabled(!canSend)
                     .keyboardShortcut(.return, modifiers: .command)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .background(.bar)
+                .padding(12)
+                .glassEffect(.regular, in: Capsule())
+                .padding(.horizontal, 32)
+                .padding(.bottom, 24)
             }
-            .frame(minWidth: 480)
-
-            // AI Panel
-            if showAIAssistant {
-                Divider()
-
-                ComposeAIPanel(
-                    emailBody: $emailBody,
-                    subject: subject,
-                    onDismiss: { showAIAssistant = false }
-                )
-                .frame(width: 300)
-            }
+            .padding(.trailing, showAIAssistant ? 320 : 0) // Adjust for AI panel
         }
-        .background(.background)
+        .background(
+            Image("MeshGradient") // Assuming there's a mesh gradient or similar, or just use background
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .ignoresSafeArea()
+                .opacity(0.1)
+                .background(Color(nsColor: .windowBackgroundColor))
+        )
         .navigationTitle(navigationTitle)
         .onAppear {
             setupFromReplyContext()
@@ -330,14 +378,16 @@ struct ComposeView: View {
             let bccRecipients = parseRecipients(bcc)
 
             if let context = replyContext, context.mode == .reply || context.mode == .replyAll {
+                let replyData = SMTPService.ReplyEmailData(from: context.email)
                 try await smtpService.sendReply(
-                    to: context.email,
+                    to: replyData,
                     body: emailBody,
                     replyAll: context.mode == .replyAll
                 )
             } else if let context = replyContext, context.mode == .forward {
+                let forwardData = SMTPService.ForwardEmailData(from: context.email)
                 try await smtpService.forwardEmail(
-                    context.email,
+                    forwardData,
                     to: toRecipients,
                     body: emailBody
                 )
@@ -381,61 +431,6 @@ struct ComposeView: View {
     }
 }
 
-// MARK: - Field Row
-
-private struct ComposeFieldRow<Content: View>: View {
-    let label: String
-    var showDivider: Bool = true
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                Text(label)
-                    .font(.subheadline)
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 56, alignment: .leading)
-
-                content
-                    .font(.subheadline)
-            }
-            .padding(.vertical, 10)
-
-            if showDivider {
-                Divider()
-            }
-        }
-    }
-}
-
-// MARK: - Toolbar Button
-
-private struct ToolbarButton: View {
-    let icon: String
-    let label: String
-    var isActive: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .medium))
-                Text(label)
-                    .font(.subheadline)
-            }
-            .foregroundStyle(isActive ? Color.accentColor : .secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                isActive ? Color.accentColor.opacity(0.1) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - AI Panel
 
 private struct ComposeAIPanel: View {
@@ -452,35 +447,32 @@ private struct ComposeAIPanel: View {
             // Header
             HStack {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.accentColor)
                 Text("AI Assistant")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .font(.headline)
                 Spacer()
                 Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .semibold))
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
                         .foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(.bar)
-
-            Divider()
+            .padding(16)
+            .background(.ultraThinMaterial)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     // Quick actions
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Quick actions")
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Quick Actions")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.secondary)
                             .textCase(.uppercase)
 
-                        ComposeFlowLayout(spacing: 6) {
+                        ComposeFlowLayout(spacing: 8) {
                             QuickActionChip(label: "Formal", icon: "building.2") {
                                 Task { await applyAction("Make it formal") }
                             }
@@ -500,19 +492,18 @@ private struct ComposeAIPanel: View {
                     Divider()
 
                     // Custom input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Custom")
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Custom Request")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.secondary)
                             .textCase(.uppercase)
 
                         HStack(spacing: 8) {
-                            TextField("Add closing, expand point...", text: $prompt)
+                            TextField("Ask AI to rewrite...", text: $prompt)
                                 .textFieldStyle(.plain)
-                                .font(.subheadline)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
+                                .padding(10)
+                                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
 
                             Button {
                                 Task { await applyAction(prompt) }
@@ -523,14 +514,14 @@ private struct ComposeAIPanel: View {
                                             .scaleEffect(0.5)
                                     } else {
                                         Image(systemName: "arrow.up")
-                                            .font(.system(size: 11, weight: .semibold))
+                                            .fontWeight(.bold)
                                     }
                                 }
                                 .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
+                                .frame(width: 32, height: 32)
                                 .background(
                                     prompt.isEmpty || isGenerating ? Color.secondary.opacity(0.5) : Color.accentColor,
-                                    in: RoundedRectangle(cornerRadius: 6)
+                                    in: Circle()
                                 )
                             }
                             .buttonStyle(.plain)
@@ -542,10 +533,11 @@ private struct ComposeAIPanel: View {
                     if !suggestions.isEmpty {
                         Divider()
 
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 12) {
                             Text("Suggestions")
                                 .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.secondary)
                                 .textCase(.uppercase)
 
                             ForEach(suggestions, id: \.self) { suggestion in
@@ -554,11 +546,15 @@ private struct ComposeAIPanel: View {
                                     suggestions = []
                                 } label: {
                                     Text(suggestion)
-                                        .font(.caption)
+                                        .font(.callout)
                                         .foregroundStyle(.primary)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(10)
-                                        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 6))
+                                        .padding(12)
+                                        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                                        )
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -568,7 +564,7 @@ private struct ComposeAIPanel: View {
                 .padding(16)
             }
         }
-        .background(.background)
+        .background(.regularMaterial)
     }
 
     private func applyAction(_ action: String) async {
@@ -594,16 +590,20 @@ private struct QuickActionChip: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                 Text(label)
-                    .font(.caption)
+                    .font(.subheadline)
             }
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 5))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -657,5 +657,5 @@ private struct ComposeFlowLayout: Layout {
     ComposeView(draftId: nil)
         .environmentObject(TabManager())
         .modelContainer(for: [Account.self])
-        .frame(width: 700, height: 500)
+        .frame(width: 800, height: 600)
 }

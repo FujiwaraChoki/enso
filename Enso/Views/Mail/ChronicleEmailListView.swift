@@ -150,6 +150,8 @@ struct ChronicleEmailListView: View {
 
     // MARK: - Toolbar
 
+    @Namespace private var toolbarNamespace
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .status) {
@@ -161,7 +163,7 @@ struct ChronicleEmailListView: View {
         }
 
         ToolbarItem(placement: .primaryAction) {
-            GlassEffectContainer(spacing: 4.0) {
+            GlassEffectContainer(namespace: toolbarNamespace) {
                 HStack(spacing: 4.0) {
                     Button(action: { Task { await onRefresh() } }) {
                         Image(systemName: "arrow.clockwise")
@@ -169,7 +171,7 @@ struct ChronicleEmailListView: View {
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
-                    .glassEffect()
+                    .glassEffectUnion(id: "toolbar", namespace: toolbarNamespace)
                     .help("Refresh")
 
                     Button(action: onCompose) {
@@ -178,7 +180,7 @@ struct ChronicleEmailListView: View {
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
-                    .glassEffect()
+                    .glassEffectUnion(id: "toolbar", namespace: toolbarNamespace)
                     .help("New Message")
 
                     Button(action: onToggleAI) {
@@ -187,7 +189,7 @@ struct ChronicleEmailListView: View {
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
-                    .glassEffect()
+                    .glassEffectUnion(id: "toolbar", namespace: toolbarNamespace)
                     .help("AI Assistant")
                 }
             }

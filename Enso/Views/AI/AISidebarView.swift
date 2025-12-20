@@ -15,77 +15,75 @@ struct AISidebarView: View {
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
-        GlassEffectContainer {
-            VStack(spacing: 0) {
-                // Header
-                headerView
+        VStack(spacing: 0) {
+            // Header
+            headerView
 
-                // Email context card
-                if let email = email {
-                    emailContextCard(email)
-                }
+            // Email context card
+            if let email = email {
+                emailContextCard(email)
+            }
 
-                // Chat content
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            // Empty state
-                            if aiService.messages.isEmpty && !aiService.isGenerating {
-                                emptyStateView
-                            } else {
-                                // Messages
-                                ForEach(aiService.messages) { message in
-                                    SidebarMessageBubble(message: message)
-                                        .id(message.id)
-                                }
+            // Chat content
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        // Empty state
+                        if aiService.messages.isEmpty && !aiService.isGenerating {
+                            emptyStateView
+                        } else {
+                            // Messages
+                            ForEach(aiService.messages) { message in
+                                SidebarMessageBubble(message: message)
+                                    .id(message.id)
+                            }
 
-                                // Streaming response
-                                if aiService.isGenerating {
-                                    if !aiService.currentStreamText.isEmpty {
-                                        SidebarStreamingBubble(text: aiService.currentStreamText)
-                                            .id("streaming")
-                                    } else {
-                                        SidebarThinkingBubble()
-                                            .id("thinking")
-                                    }
-                                }
-
-                                // Error state
-                                if let error = errorMessage {
-                                    errorView(error)
+                            // Streaming response
+                            if aiService.isGenerating {
+                                if !aiService.currentStreamText.isEmpty {
+                                    SidebarStreamingBubble(text: aiService.currentStreamText)
+                                        .id("streaming")
+                                } else {
+                                    SidebarThinkingBubble()
+                                        .id("thinking")
                                 }
                             }
 
-                            // Contextual action chips
-                            if email != nil && !aiService.isGenerating {
-                                ContextualActionChips(
-                                    hasEmail: email != nil,
-                                    lastResponseType: aiService.lastResponseType,
-                                    isGenerating: aiService.isGenerating,
-                                    onChipTap: { chip in
-                                        Task {
-                                            await handleChipTap(chip)
-                                        }
-                                    },
-                                    onCopy: copyLastResponse
-                                )
-                                .padding(.top, 4)
+                            // Error state
+                            if let error = errorMessage {
+                                errorView(error)
                             }
                         }
-                        .padding(16)
                     }
-                    .scrollClipDisabled()
-                    .onChange(of: aiService.messages.count) { _, _ in
-                        scrollToBottom(proxy: proxy)
-                    }
-                    .onChange(of: aiService.currentStreamText) { _, _ in
-                        scrollToBottom(proxy: proxy)
-                    }
+                    .padding(16)
                 }
-
-                // Input area
-                inputView
+                .scrollClipDisabled()
+                .onChange(of: aiService.messages.count) { _, _ in
+                    scrollToBottom(proxy: proxy)
+                }
+                .onChange(of: aiService.currentStreamText) { _, _ in
+                    scrollToBottom(proxy: proxy)
+                }
             }
+
+            // Contextual action chips (Suggestions)
+            if email != nil && !aiService.isGenerating {
+                ContextualActionChips(
+                    hasEmail: email != nil,
+                    lastResponseType: aiService.lastResponseType,
+                    isGenerating: aiService.isGenerating,
+                    onChipTap: { chip in
+                        Task {
+                            await handleChipTap(chip)
+                        }
+                    },
+                    onCopy: copyLastResponse
+                )
+                .padding(.bottom, 8)
+            }
+
+            // Input area
+            inputView
         }
         .onChange(of: email) { _, newEmail in
             aiService.setEmailContext(newEmail)
@@ -104,25 +102,23 @@ struct AISidebarView: View {
 
     private var headerView: some View {
         HStack(spacing: 12) {
-            // Animated sparkle icon
-            AISparkleIcon(isActive: aiService.isGenerating)
+            Text("Assistant")
+                .font(.custom("InstrumentSerif-Regular", size: 24))
+                .foregroundStyle(.primary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("AI Assistant")
-                    .font(.headline)
+            Spacer()
 
-                // Availability status
+            // Availability status
+            if !aiService.isAvailable {
                 HStack(spacing: 5) {
                     Circle()
-                        .fill(aiService.isAvailable ? Color.green : Color.orange)
+                        .fill(Color.orange)
                         .frame(width: 6, height: 6)
-                    Text(aiService.isAvailable ? "Ready" : "Unavailable")
+                    Text("Unavailable")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
-
-            Spacer()
 
             // Clear conversation button
             if !aiService.messages.isEmpty {
@@ -132,24 +128,25 @@ struct AISidebarView: View {
                         errorMessage = nil
                     }
                 }) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 12, weight: .medium))
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.glass)
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: Circle())
                 .help("Clear conversation")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 
     // MARK: - Email Context Card
 
     private func emailContextCard(_ email: Email) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "envelope.fill")
-                .foregroundStyle(Color.blue)
+            Image(systemName: "envelope")
+                .foregroundStyle(.secondary)
                 .font(.system(size: 13))
 
             Text(email.subject)
@@ -158,41 +155,34 @@ struct AISidebarView: View {
                 .lineLimit(1)
 
             Spacer()
-
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .font(.caption)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .padding(.top, 8)
     }
 
     // MARK: - Empty State View
 
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: email == nil ? "envelope.open" : "sparkles")
-                .font(.system(size: 32, weight: .medium))
-                .foregroundStyle(email == nil ? Color.secondary : Color.blue)
+        VStack(spacing: 16) {
+            Spacer()
+                .frame(height: 40)
 
-            VStack(spacing: 8) {
-                Text(email == nil ? "Select an Email" : "Ask Me Anything")
-                    .font(.headline)
+            Image(systemName: "sparkles")
+                .font(.system(size: 28))
+                .foregroundStyle(.secondary.opacity(0.3))
 
-                Text(email == nil
-                     ? "Choose an email to get AI assistance"
-                     : "I can summarize, draft replies, extract info, or answer questions about this email.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 24)
+            Text(email == nil ? "Select an email to start" : "How can I help with this email?")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Spacer()
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
+        .padding(.vertical, 20)
     }
 
     // MARK: - Error View
@@ -233,7 +223,7 @@ struct AISidebarView: View {
                 .lineLimit(1...4)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .glassEffect(.regular, in: Capsule())
                 .focused($isInputFocused)
                 .onSubmit {
                     Task {
@@ -255,7 +245,7 @@ struct AISidebarView: View {
                 Image(systemName: aiService.isGenerating ? "stop.fill" : "arrow.up")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(sendButtonColor)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: Circle())
@@ -264,7 +254,7 @@ struct AISidebarView: View {
             .animation(.easeInOut(duration: 0.15), value: inputText.isEmpty)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.bottom, 14)
     }
 
     private var sendButtonColor: Color {
@@ -378,53 +368,6 @@ struct AISidebarView: View {
 }
 
 // MARK: - Supporting Components
-
-/// Animated AI sparkle icon with glass effect
-struct AISparkleIcon: View {
-    let isActive: Bool
-
-    @State private var rotation: Double = 0
-    @State private var scale: CGFloat = 1.0
-
-    var body: some View {
-        ZStack {
-            // Outer glow when active
-            if isActive {
-                Circle()
-                    .fill(.blue.opacity(0.2))
-                    .frame(width: 40, height: 40)
-                    .blur(radius: 4)
-            }
-
-            // Icon container
-            ZStack {
-                Circle()
-                    .fill(.blue.gradient.opacity(0.15))
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "sparkles")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.blue)
-                    .rotationEffect(.degrees(isActive ? rotation : 0))
-                    .scaleEffect(isActive ? scale : 1.0)
-            }
-        .background(.regularMaterial, in: Circle())
-        }
-        .onChange(of: isActive) { _, active in
-            if active {
-                withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
-                    rotation = 360
-                }
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                    scale = 1.1
-                }
-            } else {
-                rotation = 0
-                scale = 1.0
-            }
-        }
-    }
-}
 
 /// Quick hint pill shown in empty state
 struct QuickHintPill: View {

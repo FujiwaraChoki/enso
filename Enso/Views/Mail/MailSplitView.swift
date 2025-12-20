@@ -269,48 +269,7 @@ struct SidebarView: View {
     }
 }
 
-// MARK: - Sidebar Folder Row
 
-struct SidebarFolderRow: View {
-    let folder: Folder
-    let isSelected: Bool
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: folder.icon)
-                .font(.body)
-                .foregroundStyle(folder.specialUse == .inbox ? .blue : .secondary)
-                .frame(width: 20)
-
-            Text(folder.name)
-                .font(.body)
-                .foregroundStyle(isSelected ? .primary : .primary)
-
-            Spacer()
-
-            if folder.unreadCount > 0 {
-                Text("\(folder.unreadCount)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background {
-                        Capsule()
-                            .fill(.quaternary)
-                    }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .glassEffect(
-            isSelected ? .regular.interactive() : .regular,
-            in: .rect(cornerRadius: 10)
-        )
-        .opacity(isSelected ? 1.0 : 0.85)
-    }
-}
 
 // MARK: - Email List View
 

@@ -21,34 +21,6 @@ enum ActionChip: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var icon: String {
-        switch self {
-        case .summarize: return "doc.text"
-        case .draftReply: return "arrowshape.turn.up.left"
-        case .extractInfo: return "text.magnifyingglass"
-        case .actionItems: return "checklist"
-        case .moreDetail: return "plus.magnifyingglass"
-        case .makeShorter: return "arrow.down.left.and.arrow.up.right"
-        case .makeFormal: return "briefcase"
-        case .makeCasual: return "face.smiling"
-        case .copy: return "doc.on.doc"
-        }
-    }
-
-    var accentColor: Color {
-        switch self {
-        case .summarize: return .blue
-        case .draftReply: return .green
-        case .extractInfo: return .purple
-        case .actionItems: return .orange
-        case .moreDetail: return .cyan
-        case .makeShorter: return .indigo
-        case .makeFormal: return .teal
-        case .makeCasual: return .pink
-        case .copy: return .secondary
-        }
-    }
-
     /// The prompt to send when this chip is tapped
     var prompt: String {
         switch self {
@@ -105,27 +77,25 @@ struct ContextualActionChips: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    ForEach(chips) { chip in
-                        ActionChipButton(
-                            chip: chip,
-                            isDisabled: isGenerating || (!hasEmail && chip != .copy),
-                            onTap: {
-                                if chip == .copy {
-                                    onCopy()
-                                } else {
-                                    onChipTap(chip)
-                                }
+            HStack(spacing: 8) {
+                ForEach(chips) { chip in
+                    ActionChipButton(
+                        chip: chip,
+                        isDisabled: isGenerating || (!hasEmail && chip != .copy),
+                        onTap: {
+                            if chip == .copy {
+                                onCopy()
+                            } else {
+                                onChipTap(chip)
                             }
-                        )
-                    }
+                        }
+                    )
                 }
-                .padding(.horizontal, 4)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
         }
         .scrollClipDisabled()
-        .animation(.spring(duration: 0.3), value: lastResponseType)
     }
 }
 
@@ -138,49 +108,23 @@ struct ActionChipButton: View {
     let onTap: () -> Void
 
     @State private var isHovered = false
-    @State private var isPressed = false
 
     var body: some View {
         Button(action: {
-            withAnimation(.spring(duration: 0.2)) {
-                isPressed = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isPressed = false
-                onTap()
-            }
+            onTap()
         }) {
-            HStack(spacing: 7) {
-                // Icon with subtle color accent
-                ZStack {
-                    Circle()
-                        .fill(chip.accentColor.opacity(isDisabled ? 0.05 : 0.12))
-                        .frame(width: 22, height: 22)
-
-                    Image(systemName: chip.icon)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(isDisabled ? Color.secondary.opacity(0.5) : chip.accentColor)
-                }
-
-                Text(chip.rawValue)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(isDisabled ? Color.secondary.opacity(0.5) : .primary)
-            }
-            .padding(.leading, 6)
-            .padding(.trailing, 14)
-            .padding(.vertical, 8)
-            .background(
-                .regularMaterial,
-                in: Capsule()
-            )
+            Text(chip.rawValue.uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(isDisabled ? Color.secondary.opacity(0.3) : .secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color.secondary.opacity(isHovered ? 0.15 : 0.08))
+                )
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .scaleEffect(isPressed ? 0.95 : (isHovered ? 1.03 : 1.0))
-        .opacity(isDisabled ? 0.6 : 1.0)
-        .animation(.spring(duration: 0.2), value: isHovered)
-        .animation(.spring(duration: 0.15), value: isPressed)
         .onHover { hovering in
             guard !isDisabled else { return }
             isHovered = hovering
@@ -193,42 +137,6 @@ struct ActionChipButton: View {
 #Preview("Initial State") {
     ContextualActionChips(
         hasEmail: true,
-        lastResponseType: .none,
-        isGenerating: false,
-        onChipTap: { _ in },
-        onCopy: {}
-    )
-    .frame(width: 350)
-    .padding()
-}
-
-#Preview("After Summary") {
-    ContextualActionChips(
-        hasEmail: true,
-        lastResponseType: .summary,
-        isGenerating: false,
-        onChipTap: { _ in },
-        onCopy: {}
-    )
-    .frame(width: 350)
-    .padding()
-}
-
-#Preview("After Draft Reply") {
-    ContextualActionChips(
-        hasEmail: true,
-        lastResponseType: .draftReply,
-        isGenerating: false,
-        onChipTap: { _ in },
-        onCopy: {}
-    )
-    .frame(width: 350)
-    .padding()
-}
-
-#Preview("No Email") {
-    ContextualActionChips(
-        hasEmail: false,
         lastResponseType: .none,
         isGenerating: false,
         onChipTap: { _ in },

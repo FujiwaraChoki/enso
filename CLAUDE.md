@@ -216,6 +216,8 @@ Required capabilities:
 
 ### Liquid Glass Effects
 
+**Overview**: Liquid Glass is Apple's design language introduced at WWDC 2025, representing the biggest visual update to iOS since the move to flat design in iOS 7. Glass elements float above content with translucent, depth-aware surfaces that reflect and refract surrounding content, featuring real-time light bending (lensing), specular highlights responding to device motion, adaptive shadows, and interactive behaviors.
+
 **Core Principle: Use Standard Components First**
 
 Standard SwiftUI components automatically adopt Liquid Glass when building with the latest SDKs. This includes:
@@ -226,45 +228,239 @@ Standard SwiftUI components automatically adopt Liquid Glass when building with 
 
 **Remove custom styling** and let the system handle appearances. Custom backgrounds and effects can interfere with Liquid Glass.
 
-#### When to Use `.glassEffect()`
+**When to Use Liquid Glass:**
+- Navigation bars and toolbars
+- Tab bars and bottom accessories
+- Floating action buttons
+- Sheets, popovers, and menus
+- Context-sensitive controls
+- System-level alerts
 
-Use `.glassEffect(_:in:)` modifier ONLY for custom components that need Liquid Glass appearance:
+**When NOT to Use:**
+- Content layers (lists, tables, media)
+- Full-screen backgrounds
+- Scrollable content areas
+- Stacked glass layers
+- Every UI element (apply sparingly)
 
+#### The `.glassEffect()` Modifier
+
+Use `.glassEffect(_:in:)` modifier ONLY for custom components that need Liquid Glass appearance.
+
+**Basic Usage:**
 ```swift
-// For custom views only
 Text("Custom Label")
     .padding()
-    .glassEffect()  // Applies capsule shape by default
+    .glassEffect()  // Applies DefaultGlassEffectShape (capsule) by default
+```
 
+**Glass Variants:**
+
+SwiftUI provides three glass effect options:
+
+1. **`.regular`** - The most commonly used across the system. Resembles frosted glass with heavier diffusion, enhancing contrast and improving legibility.
+2. **`.clear`** - Designed for dramatic effect. Minimal blurring and high transparency, giving the impression of actual liquid glass.
+3. **`.identity`** - Suitable when you need to conditionally disable the effect.
+
+**Customization Options:**
+
+```swift
 // With custom shape
 Text("Custom Label")
     .padding()
-    .glassEffect(in: .rect(cornerRadius: 16.0))
+    .glassEffect(.regular, in: .rect(cornerRadius: 16.0))
 
-// Interactive (responds to touch/hover)
+// With color tinting
+Text("Custom Label")
+    .padding()
+    .glassEffect(.regular.tint(.purple.opacity(0.8)))
+
+// Interactive (responds to touch/hover, handles gestures)
 Button("Action") { }
     .glassEffect(.regular.interactive())
+
+// Combined customizations
+Button("Action") { }
+    .glassEffect(.clear.tint(.blue.opacity(0.7)).interactive())
 ```
 
-#### GlassEffectContainer
+**Key Features:**
+- The `.interactive()` modifier makes glass more aggressive to the content behind and handles gestures like tap and drag
+- All glass types can be modified using the `.tint()` function
+- Reduced opacity in tint colors improves the see-through effect
+- The system automatically applies rounded corners fitting your app's context
 
-Use `GlassEffectContainer` when multiple custom glass elements need to:
-- Render together for better performance
-- Morph and blend into each other during animations
+#### GlassEffectContainer & GlassEffectUnion
+
+The `glassEffectUnion` modifier allows multiple UI elements to be visually grouped into a single unified Liquid Glass shape, creating cohesive glass-morphism designs.
+
+**Implementation Pattern:**
 
 ```swift
-GlassEffectContainer(spacing: 40.0) {
-    HStack(spacing: 40.0) {
-        // Multiple glass effects can blend together
+@Namespace var unionNamespace
+
+GlassEffectContainer(namespace: unionNamespace) {
+    HStack {
+        Button { ... }
+            .glassEffectUnion(id: "toolbar", namespace: unionNamespace)
+
+        Button { ... }
+            .glassEffectUnion(id: "toolbar", namespace: unionNamespace)
     }
 }
 ```
 
+**Key Components:**
+1. **GlassEffectContainer**: Wraps the content and draws the unified background. Requires a `namespace`.
+2. **.glassEffectUnion(id:namespace:)**: applied to EACH item that should be part of the glass shape.
+3. **Padding**: Ensure items have sufficient padding *before* applying the modifier, as the union is calculated based on the frame of the view at that point.
+
+**When to Use:**
+- Tab bars (floating capsules)
+- Toolbar groups
+- Action chips
+
+**Note**: Do NOT apply individual background materials to the items. The container handles the drawing.
+
+
+
+**When to Use:**
+- Vertically or horizontally stacked controls that should appear as one unified glass element
+- Grouped toolbar actions (similar to Apple Maps button clusters)
+- Related control sets that benefit from visual cohesion
+
+**Key Parameters:**
+- `id`: Shared identifier connecting all grouped elements
+- `namespace`: SwiftUI `@Namespace` binding for view coordination
+
+#### Morphing Transitions with glassEffectID
+
+The `glassEffectID` modifier enables SwiftUI views that use the glass effect to transform smoothly into one another, creating fluid morphing effects when glass elements transition in and out of view.
+
+**Purpose:**
+- Shares a visual identity between elements coordinated by `GlassEffectContainer`
+- Allows glass elements to morph seamlessly during view transitions
+- Creates polished, Apple-quality animations between states
+
+**Requirements:**
+- Each view inside `GlassEffectContainer` needs a unique identifier within a shared namespace
+- Elements must exist in the same container view
+- SwiftUI tracks views as they're added/removed to create seamless shape transitions
+
+**Implementation Pattern:**
+
+```swift
+@Namespace var morphNamespace
+
+GlassEffectContainer {
+    if showingFirstView {
+        FirstView()
+            .glassEffect(.regular)
+            .glassEffectID("morphingElement", in: morphNamespace)
+    } else {
+        SecondView()
+            .glassEffect(.regular)
+            .glassEffectID("morphingElement", in: morphNamespace)
+    }
+}
+```
+
+**Use Cases:**
+- Expanding/collapsing UI elements
+- Transitioning between different content states
+- Creating hero animations with glass effects
+- Morphing between toolbar configurations
+
 #### Button Styles
 
 SwiftUI provides native glass button styles:
-- `.buttonStyle(.glass)` - Standard glass appearance
-- `.buttonStyle(.glassProminent)` - Emphasized glass appearance
+- `.buttonStyle(.glass)` - Standard glass appearance for secondary actions
+- `.buttonStyle(.glassProminent)` - Emphasized glass appearance for primary actions
+
+The `GlassButtonStyle` applies glass border artwork based on the button's context, providing a consistent system appearance.
+
+#### Glass Background Effect
+
+The `glassBackgroundEffect` modifier fills a view's background with an automatic glass background effect.
+
+**Variations:**
+
+```swift
+// With automatic container-relative rounded rectangle shape
+.glassBackgroundEffect(displayMode: .always)
+
+// With custom shape
+.glassBackgroundEffect(in: .rect(cornerRadius: 20), displayMode: .always)
+```
+
+**Display Modes:**
+- `.always` - Glass effect always visible
+- `.automatic` - System determines when to show the effect based on context
+
+**Context-Aware Behavior:**
+In certain contexts (navigation bars on iOS, window toolbars on macOS), toolbar items automatically receive a glass background effect that's shared with other items in the same logical grouping.
+
+**Important Note:**
+Available in iOS 26 and macOS 26 (Tahoe), not macOS 15.
+
+#### Liquid Glass Sheets, Popovers, and Menus
+
+On iOS 26, partial height sheets are inset by default with a Liquid Glass background, appearing to float above the interface.
+
+**Sheet Implementation:**
+
+```swift
+.sheet(isPresented: $showingSheet) {
+    SheetContent()
+        .presentationDetents([.medium, .large])  // Required for Liquid Glass
+}
+```
+
+**Key Requirements:**
+- Specify presentation detents with at least one partial height option (`.medium` or custom height)
+- **Do NOT use** `.presentationBackground()` - it interferes with automatic Liquid Glass
+- Sheets have rounded corners following the device shape
+- Edges don't touch the screen, creating a floating appearance
+
+**Forms in Sheets:**
+
+Form views provide their own opaque background that covers the glass surface. To enable Liquid Glass:
+
+```swift
+.sheet(isPresented: $showingSettings) {
+    NavigationStack {
+        Form {
+            // Form content
+        }
+        .scrollContentBackground(.hidden)  // Required for Liquid Glass
+    }
+    .presentationDetents([.medium, .large])
+}
+```
+
+**Morphing Sheet Transitions:**
+
+Create smooth zoom transitions from toolbar items to sheets:
+
+```swift
+// On the toolbar item
+ToolbarItem {
+    Button("Show Settings") {
+        showingSettings = true
+    }
+    .matchedTransitionSource(id: "settingsSheet", in: namespace)
+}
+
+// On the sheet
+.sheet(isPresented: $showingSettings) {
+    SettingsView()
+        .navigationTransition(.zoom(sourceID: "settingsSheet", in: namespace))
+        .presentationDetents([.medium, .large])
+}
+```
+
+**Behavior:**
+Menus, alerts, and popovers flow smoothly out of Liquid Glass controls, drawing focus from their action to the presentation's content.
 
 #### Search Interface
 
@@ -304,6 +500,24 @@ Benefits:
 3. **Don't stack glass effects** on top of each other - causes visual noise
 4. **Don't use `.ultraThinMaterial`** for search headers - use native searchable modifier instead
 5. **Don't create custom search fields** when `.searchable()` works
+6. **Don't use `.presentationBackground()`** on iOS 26 sheets - it prevents automatic Liquid Glass
+7. **Don't apply glass to content layers** - lists, tables, and media should remain opaque
+8. **Don't forget `.scrollContentBackground(.hidden)`** when using Forms in glass sheets
+9. **Don't apply glass to full-screen backgrounds** - it should float "on top" as an overlay layer
+
+#### Best Practices Summary
+
+**Layered Design Philosophy:**
+Liquid Glass should sit "on top" of your UI as an overlay layer, not replace main content areas. Think of it as a floating interface layer that hovers above your core content.
+
+**Performance:**
+- Use `GlassEffectContainer` to group related glass elements for better rendering performance
+- Elements within the same container merge visually when positioned closely
+
+**Visual Hierarchy:**
+- Use reduced opacity in tint colors to improve the see-through effect
+- Reserve `.glassProminent` for primary actions
+- Use `.glass` for secondary actions
 
 ## Common Patterns
 
@@ -384,3 +598,32 @@ When a user selects an email in `MailSplitView`, the context flows:
 - Only use types that conform to `Generable` protocol
 - Basic types: String, Int, Bool, Double, Arrays
 - Avoid: Date (use Int for relative dates), UUID (use String)
+
+## Liquid Glass Resources
+
+### Official Apple Documentation
+- [Applying Liquid Glass to custom views](https://developer.apple.com/documentation/SwiftUI/Applying-Liquid-Glass-to-custom-views)
+- [glassBackgroundEffect Documentation](https://developer.apple.com/documentation/swiftui/view/glassbackgroundeffect(in:displaymode:))
+- [GlassButtonStyle Documentation](https://developer.apple.com/documentation/swiftui/glassbuttonstyle)
+- [Build a SwiftUI app with the new design - WWDC25 Session 323](https://developer.apple.com/videos/play/wwdc2025/323/)
+
+### Community Tutorials & Articles
+- [Designing custom UI with Liquid Glass on iOS 26 - Donny Wals](https://www.donnywals.com/designing-custom-ui-with-liquid-glass-on-ios-26/)
+- [Grouping Liquid Glass components using glassEffectUnion - Donny Wals](https://www.donnywals.com/grouping-liquid-glass-components-using-glasseffectunion-on-ios-26/)
+- [Glassifying custom SwiftUI views - Swift with Majid](https://swiftwithmajid.com/2025/07/16/glassifying-custom-swiftui-views/)
+- [Presenting Liquid Glass sheets in SwiftUI on iOS 26](https://nilcoalescing.com/blog/PresentingLiquidGlassSheetsInSwiftUI/)
+- [Liquid Glass sheets with NavigationStack and Form](https://nilcoalescing.com/blog/LiquidGlassSheetsWithNavigationStackAndForm/)
+- [Understanding GlassEffectContainer in iOS 26](https://dev.to/arshtechpro/understanding-glasseffectcontainer-in-ios-26-2n8p)
+- [Transforming Glass Views with glassEffectID - SerialCoder.dev](https://serialcoder.dev/text-tutorials/swiftui/transforming-glass-views-with-the-glasseffectid-modifier-in-swiftui/)
+- [How to morph liquid glass view transition - Swift Discovery](https://onmyway133.com/posts/how-to-morph-liquid-glass-view-transition/)
+- [Morphing glass effect elements with glassEffectID - Create with Swift](https://www.createwithswift.com/morphing-glass-effect-elements-into-one-another-with-glasseffectid/)
+- [Glass Options in iOS 26: Clear vs Regular - Livsy Code](https://livsycode.com/swiftui/glass-options-in-ios-26-clear-vs-regular-frosted-glass/)
+- [Liquid Glass in SwiftUI: glassEffect and glass buttons - Jorgemrht](https://jorgemrht.dev/2025/09/17/liquid-glass-glassEffect-buttons)
+- [Grow on iOS 26 - Liquid Glass Adaptation](https://fatbobman.com/en/posts/grow-on-ios26)
+- [Adopting Liquid Glass: Experiences and Pitfalls](https://juniperphoton.substack.com/p/adopting-liquid-glass-experiences)
+
+### Sample Code & References
+- [LiquidGlassReference - Comprehensive Swift/SwiftUI Reference](https://github.com/conorluddy/LiquidGlassReference)
+- [LiquidGlassSwiftUI - Sample App](https://github.com/mertozseven/LiquidGlassSwiftUI)
+- [dm-swift-swiftui-liquid-glass - Component Library](https://github.com/dambertmunoz/dm-swift-swiftui-liquid-glass)
+- [LiquidGlassCheatsheet](https://github.com/GonzaloFuentes28/LiquidGlassCheatsheet)
